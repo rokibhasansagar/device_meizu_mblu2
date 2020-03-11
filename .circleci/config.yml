@@ -9,41 +9,121 @@ jobs:
       CODENAME: 'mblu2' # Device Codename
       # GitHubMail: '' # Enter GitHub User EMail Address. Has been set in context.
       # GitHubName: '' # Enter GitHub Username. Has been set in context.
-      # Add the following Token in encrypted form inside CircleCI
+      ## Add the following Token in encrypted form inside CircleCI
       # GITHUB_TOKEN: '' # GitHub OAuth Token, for release. Has been set in context.
-      EXTRA_CMD: "cd bootable/recovery; patch -p1 < ../../device/${VENDOR}/${CODENAME}/patches/bootable/recovery/*.patch || true; cd ../.."
       Device_Tree: 'https://github.com/rokibhasansagar/device_meizu_mblu2' # The Full URL of DT
       BUILDTYPE: 'userdebug' # Set as eng or userdebug
       VER: '2.2'
-      POST_BUILD_CMD: "make clean; sed -i 's/false/true/g' device/meizu/mblu2/AndroidProducts.mk; source build/envsetup.sh; lunch omni_${CODENAME}-${BUILDTYPE}; make -j$(nproc --all) recoveryimage; rename 's/\.zip$/_64bit.zip/' ${BuildDir}/release/*zip; rename 's/\.zip$/_32bit.zip/' out/target/product/${CODENAME}/*zip; cp out/target/product/${CODENAME}/SHRP*.zip ${BuildDir}/release/"
     working_directory: /home/builder/shrp/
     steps:
-      # - checkout
+    # - checkout
       - run:
-          name: Create a keep-alive shell
+          name: Check if all env vars are set or not
           command: |
-            cat \<< EOF > act.sh
-            #!/bin/bash
+            # Do not modify this part
+            if [[ -z ${Device_Tree} ]]; then
+              echo -e "\n Device Tree URL is not given.\n Can not proceed." && exit 1
+            elif [[ -z ${VENDOR} ]]; then
+              echo -e "\n Vendor Name not given." && exit 1
+            elif [[ -z ${CODENAME} ]]; then
+              echo -e "\n Device Codename not given." && exit 1
+            elif [[ -z ${BUILDTYPE} ]]; then
+              echo -e "\n Build Type, e.g., eng or userdebug is not set." && exit 1
+            fi
+
+            if [[ -z ${MANIFEST_BR} ]]; then
+              echo -e "\n Using Default Pie Manifest Branch."
+              MANIFEST_BR="9.0"
+            fi
+
+            if [[ -z $GitHubName ]]; then
+              echo -e "\n GitHub Username is not set." && exit 1
+            elif [[ -z $GitHubMail ]]; then
+              echo -e "\n GitHub E-mail Address is not set." && exit 1
+            fi
+
+            if [[ -z ${GITHUB_TOKEN} ]]; then
+              echo -e "\n GitHub OAuth Token not set. Can not Upload Built File on GitHub Releases."
+            fi
+      - run:
+          name: Create & Run a keep-alive shell
+          command: |
+            # Basic trick to ping every 5 minutes in the background
             while true; do
-              echo -e "\n" && sleep 300
+              echo -e "\n ... \n" && sleep 300
             done
-            EOF
-            chmod a+x act.sh
+          background: true
       - run:
-          name: Get Script and Execute Build
+          name: Repo Init and Sync
           command: |
-            wget -q "https://gist.github.com/rokibhasansagar/bf1e94f9e7426650bcbbf16506511f25/raw/script.sh"
-            chmod a+x script.sh
-            # Run script along with keep-alive shell
-            ./act.sh & ./script.sh
+            # Set Git Credential
+            git config --global user.email $GitHubMail
+            git config --global user.name $GitHubName
+            git config --global color.ui true
+            git config --global credential.helper store
+
+            echo -e "\n Initialize repo Command"
+            repo init -q -u https://github.com/SKYHAWK-Recovery-Project/platform_manifest_twrp_omni.git -b ${MANIFEST_BR} --depth 1
+
+            echo -e "\n Removing Unimportant Darwin-specific Files from syncing"
+            cd .repo/manifests
+            sed -i '/darwin/d' default.xml
+            ( find . -type f -name '*.xml' | xargs sed -i '/darwin/d' ) || true
+            git commit -a -m "Magic" || true
+            cd ../
+            sed -i '/darwin/d' manifest.xml
+            cd ../
+
+            echo -e "\n Syncing it up! Wait for a few minutes..."
+            repo sync -c -q --force-sync --no-clone-bundle --optimized-fetch --prune --no-tags -j$(nproc --all)
+      - run:
+          name: Clone Device tree and Do Patches, etc.
+          command: |
+            # Clone DT
+            git clone ${Device_Tree} device/${VENDOR}/${CODENAME}
+
+            # Custom Patch
+            cd bootable/recovery
+            patch -p1 < ../../device/${VENDOR}/${CODENAME}/patches/bootable/recovery/*.patch
+            cd ../..
+      - run:
+          name: Run Default Build
+          command: |
+            echo -e "\n Build process starting..."
+            export ALLOW_MISSING_DEPENDENCIES=true
+            source build/envsetup.sh
+            lunch omni_${CODENAME}-${BUILDTYPE}
+
+            make -j$(nproc --all) recoveryimage
+
+            mkdir release
+            cp out/target/product/${CODENAME}/SHRP*.zip release/
+      # This step is Custom, only intended for 32bit builds for mblu2 device
+      - run:
+          name: Make 32-bit Image too
+          command: |
+            make clean
+            sed -i 's/false/true/g' device/meizu/mblu2/AndroidProducts.mk
+            source build/envsetup.sh
+            lunch omni_${CODENAME}-${BUILDTYPE}
+
+            make -j$(nproc --all) recoveryimage
+
+            rename 's/\.zip$/_64bit.zip/' release/*zip
+            rename 's/\.zip$/_32bit.zip/' out/target/product/${CODENAME}/*zip
+            cp out/target/product/${CODENAME}/SHRP*.zip release/
+      - run:
+          name: Release all built files
+          command: |
+            if [[ ! -z ${GITHUB_TOKEN} ]]; then
+              ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -n "SkyHawk Recovery Project $(echo $VER)" -b "Latest Release for $(echo $CODENAME)" -c ${CIRCLE_SHA1} -delete v$(echo $VER) release/
+            else
+              echo -e "\n Files not uploaded due to absent of GITHUB_TOKEN as env variable
+            fi
 
 workflows:
   version: 2
   shrp-builder:
     jobs:
       - build:
-        # if running CircleCI from non-default branch, add 'filters' key under 'build' key, and uncomment
-        # filters:
-        #   branches:
-        #     only: 'non-default branch name'
           context: personal-envs
