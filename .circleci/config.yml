@@ -36,7 +36,7 @@ jobs:
             # Run script along with keep-alive shell
             ./act.sh & ./script.sh
       - store_artifacts:
-          path: ${BuildDir}/release
+          path: home/builder/shrp/droid/release
 
 workflows:
   version: 2
