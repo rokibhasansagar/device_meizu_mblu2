@@ -15,6 +15,7 @@ jobs:
       Device_Tree: 'https://github.com/rokibhasansagar/device_meizu_mblu2' # The Full URL of DT
       BUILDTYPE: 'userdebug' # Set as eng or userdebug
       VER: '2.2'
+      POST_BUILD_CMD: "make clean; sed -i 's/false/true/g' device/meizu/mblu2/AndroidProducts.mk; source build/envsetup.sh; lunch omni_${CODENAME}-${BUILDTYPE}; make -j$(nproc --all) recoveryimage; mv ${BuildDir}/release/SHRP*.zip ${BuildDir}/release/SHRP*-64bit.zip; cp out/target/product/${CODENAME}/SHRP*.zip out/target/product/${CODENAME}/SHRP*-32bit.zip; cp out/target/product/${CODENAME}/SHRP*-32bit.zip ${BuildDir}/release/"
     working_directory: /home/builder/shrp/
     steps:
       # - checkout
@@ -35,8 +36,6 @@ jobs:
             chmod a+x script.sh
             # Run script along with keep-alive shell
             ./act.sh & ./script.sh
-      - store_artifacts:
-          path: home/builder/shrp/droid/release
 
 workflows:
   version: 2
