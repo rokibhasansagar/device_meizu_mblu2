@@ -1,0 +1,50 @@
+version: 2.1
+jobs:
+  build:
+    docker:
+      - image: fr3akyphantom/droid-builder:latest
+    environment:
+      MANIFEST_BR: '9.0' # Optional: State SHRP Manifest Branch. i.e., '9.0' or other
+      VENDOR: 'meizu' # State Product Vendor or Manufacturer
+      CODENAME: 'mblu2' # Device Codename
+      # GitHubMail: '' # Enter GitHub User EMail Address. Has been set in context.
+      # GitHubName: '' # Enter GitHub Username. Has been set in context.
+      # Add the following Token in encrypted form inside CircleCI
+      # GITHUB_TOKEN: '' # GitHub OAuth Token, for release. Has been set in context.
+      EXTRA_CMD: "cd bootable/recovery; patch -p1 < ../../device/${VENDOR}/${CODENAME}/patches/bootable/recovery/*.patch || true; cd ../.."
+      Device_Tree: 'https://github.com/rokibhasansagar/device_meizu_mblu2' # The Full URL of DT
+      BUILDTYPE: 'userdebug' # Set as eng or userdebug
+      VER: '2.2'
+    working_directory: /home/builder/shrp/
+    steps:
+      # - checkout
+      - run:
+          name: Create a keep-alive shell
+          command: |
+            cat \<< EOF > act.sh
+            #!/bin/bash
+            while true; do
+              echo -e "\n" && sleep 300
+            done
+            EOF
+            chmod a+x act.sh
+      - run:
+          name: Get Script and Execute Build
+          command: |
+            wget -q "https://gist.github.com/rokibhasansagar/bf1e94f9e7426650bcbbf16506511f25/raw/script.sh"
+            chmod a+x script.sh
+            # Run script along with keep-alive shell
+            ./act.sh & ./script.sh
+      - store_artifacts:
+          path: ${BuildDir}/release
+
+workflows:
+  version: 2
+  shrp-builder:
+    jobs:
+      - build:
+        # if running CircleCI from non-default branch, add 'filters' key under 'build' key, and uncomment
+        # filters:
+        #   branches:
+        #     only: 'non-default branch name'
+          context: personal-envs
