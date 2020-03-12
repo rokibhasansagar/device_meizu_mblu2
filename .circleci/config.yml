@@ -49,10 +49,13 @@ jobs:
           name: Create & Run a keep-alive shell
           command: |
             # Basic trick to ping every 5 minutes in the background
+            cat \<< EOF > /tmp/act.sh
+            #!/bin/bash
             while true; do
-              echo -e "\n ... \n" && sleep 300
+              echo -e "\n" && sleep 300
             done
-          background: true
+            EOF
+            chmod a+x /tmp/act.sh
       - run:
           name: Repo Init and Sync
           command: |
@@ -75,18 +78,14 @@ jobs:
             cd ../
 
             echo -e "\n Syncing it up! Wait for a few minutes..."
-            repo sync -c -q --force-sync --no-clone-bundle --optimized-fetch --prune --no-tags -j$(nproc --all)
+            /tmp/act.sh & repo sync -c -q --force-sync --no-clone-bundle --optimized-fetch --prune --no-tags -j$(nproc --all)
       - run:
           name: Clone Device tree and Stuff
           command: |
             # Clone DT
             git clone ${Device_Tree} device/${VENDOR}/${CODENAME}
-
-            # Custom Patches
-            cd bootable/recovery
-            patch -p1 < ../../device/meizu/mblu2/patches/bootable/recovery/media0.patch
-            patch -p1 < ../../device/meizu/mblu2/patches/bootable/recovery/twres.patch
-            cd ../..
+            # Custom Patches are non-aligned, need to fix media0.patch & twres.patch
+            # Then apply using 'patch' command
       - run:
           name: Run Default Build
           command: |
@@ -95,7 +94,7 @@ jobs:
             source build/envsetup.sh
             lunch omni_${CODENAME}-${BUILDTYPE}
 
-            make -j$(nproc --all) recoveryimage
+            /tmp/act.sh & make -j$(nproc --all) recoveryimage
 
             mkdir release
             cp out/target/product/${CODENAME}/SHRP*.zip release/
@@ -108,7 +107,7 @@ jobs:
             source build/envsetup.sh
             lunch omni_${CODENAME}-${BUILDTYPE}
 
-            make -j$(nproc --all) recoveryimage
+            /tmp/act.sh & make -j$(nproc --all) recoveryimage
 
             rename 's/\.zip$/_64bit.zip/' release/*zip
             rename 's/\.zip$/_32bit.zip/' out/target/product/${CODENAME}/*zip
