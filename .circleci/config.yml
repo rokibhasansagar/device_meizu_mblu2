@@ -109,17 +109,17 @@ jobs:
 
             /tmp/act.sh & make -j$(nproc --all) recoveryimage
 
-            ls -a release/
-            rename 's/\.zip$/_64bit.zip/' release/*zip && ls -a release/
+            rename 's/\.zip$/_64bit.zip/' release/*zip
             rename 's/\.zip$/_32bit.zip/' out/target/product/${CODENAME}/SHRP*zip
-            cp out/target/product/${CODENAME}/SHRP*.zip release/ && ls -a release/
+            cp out/target/product/${CODENAME}/SHRP*.zip release/
       - run:
           name: Release all built files
           command: |
             if [[ ! -z ${GITHUB_TOKEN} ]]; then
+              du -sh release/*
               ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -n "SkyHawk Recovery Project $(echo $VER)" -b "Latest Release for $(echo $CODENAME)" -c ${CIRCLE_SHA1} -delete v$(echo $VER) release/
             else
-              echo -e "\n Files not uploaded due to absent of GITHUB_TOKEN as env variable
+              echo -e "\n Files not uploaded due to absent of GITHUB_TOKEN as env variable"
             fi
 
 workflows:
