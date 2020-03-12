@@ -77,15 +77,17 @@ jobs:
             echo -e "\n Syncing it up! Wait for a few minutes..."
             repo sync -c -q --force-sync --no-clone-bundle --optimized-fetch --prune --no-tags -j$(nproc --all)
       - run:
-          name: Clone Device tree and Do Patches, etc.
+          name: Clone Device tree and Stuff
           command: |
             # Clone DT
             git clone ${Device_Tree} device/${VENDOR}/${CODENAME}
 
             # Custom Patch
-            cd bootable/recovery
-            patch -p1 < ../../device/${VENDOR}/${CODENAME}/patches/bootable/recovery/*.patch
-            cd ../..
+            . device/meizu/mblu2/patches/install.sh
+            #cd bootable/recovery
+            #patch -p1 < ../../device/meizu/mblu2/patches/bootable/recovery/*.patch
+            #for i in ../../device/meizu/mblu2/patches/bootable/recovery/*.patch; do patch -p1 < $i; done
+            #cd ../..
       - run:
           name: Run Default Build
           command: |
