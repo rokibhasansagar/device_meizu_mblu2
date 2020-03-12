@@ -82,11 +82,10 @@ jobs:
             # Clone DT
             git clone ${Device_Tree} device/${VENDOR}/${CODENAME}
 
-            # Custom Patch
-            #. device/meizu/mblu2/patches/install.sh
+            # Custom Patches
             cd bootable/recovery
-            #patch -p1 < ../../device/meizu/mblu2/patches/bootable/recovery/*.patch
-            for i in ../../device/meizu/mblu2/patches/bootable/recovery/*.patch; do patch -p1 < $i; done
+            patch -p1 < ../../device/meizu/mblu2/patches/bootable/recovery/media0.patch
+            patch -p1 < ../../device/meizu/mblu2/patches/bootable/recovery/twres.patch
             cd ../..
       - run:
           name: Run Default Build
