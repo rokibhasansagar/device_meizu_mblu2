@@ -45,6 +45,11 @@ jobs:
             if [[ -z ${GITHUB_TOKEN} ]]; then
               echo -e "\n GitHub OAuth Token not set. Can not Upload Built File on GitHub Releases."
             fi
+
+            echo -e "\n CCache Test\n"
+            which ccache
+            echo -e "\n CCache Stats"
+            ccache -s
       - run:
           name: Create & Run a keep-alive shell
           command: |
@@ -96,6 +101,9 @@ jobs:
 
             /tmp/act.sh & make -j$(nproc --all) recoveryimage
 
+            echo -e "\n CCache Stats"
+            ccache -s
+
             mkdir release
             cp out/target/product/${CODENAME}/SHRP*.zip release/
       # This step is Custom, only intended for 32bit builds for mblu2 device
@@ -108,6 +116,9 @@ jobs:
             lunch omni_${CODENAME}-${BUILDTYPE}
 
             /tmp/act.sh & make -j$(nproc --all) recoveryimage
+
+            echo -e "\n CCache Stats"
+            ccache -s
 
             rename 's/\.zip$/_64bit.zip/' release/*zip
             rename 's/\.zip$/_32bit.zip/' out/target/product/${CODENAME}/SHRP*zip
