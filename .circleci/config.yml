@@ -45,11 +45,6 @@ jobs:
             if [[ -z ${GITHUB_TOKEN} ]]; then
               echo -e "\n GitHub OAuth Token not set. Can not Upload Built File on GitHub Releases."
             fi
-
-            echo -e "\n CCache Test\n"
-            which ccache
-            echo -e "\n CCache Stats"
-            ccache -s
       - run:
           name: Create & Run a keep-alive shell
           command: |
@@ -96,10 +91,10 @@ jobs:
           command: |
             echo -e "\n Build process starting..."
             export ALLOW_MISSING_DEPENDENCIES=true
-            source build/envsetup.sh
-            lunch omni_${CODENAME}-${BUILDTYPE}
+            source build/envsetup.sh 2>&1 > /tmp/log.txt
+            lunch omni_${CODENAME}-${BUILDTYPE} 2>&1 >> /tmp/log.txt
 
-            /tmp/act.sh & make -j$(nproc --all) recoveryimage
+            /tmp/act.sh & make -j$(nproc --all) recoveryimage 2>&1 | sudo tee -api /tmp/log.txt
 
             echo -e "\n CCache Stats"
             ccache -s
@@ -112,10 +107,10 @@ jobs:
           command: |
             make clean
             sed -i 's/false/true/g' device/meizu/mblu2/AndroidProducts.mk
-            source build/envsetup.sh
-            lunch omni_${CODENAME}-${BUILDTYPE}
+            source build/envsetup.sh 2>&1 >> /tmp/log.txt
+            lunch omni_${CODENAME}-${BUILDTYPE} 2>&1 >> /tmp/log.txt
 
-            /tmp/act.sh & make -j$(nproc --all) recoveryimage
+            /tmp/act.sh & make -j$(nproc --all) recoveryimage 2>&1 | sudo tee -api /tmp/log.txt
 
             echo -e "\n CCache Stats"
             ccache -s
@@ -123,6 +118,14 @@ jobs:
             rename 's/\.zip$/_64bit.zip/' release/*zip
             rename 's/\.zip$/_32bit.zip/' out/target/product/${CODENAME}/SHRP*zip
             cp out/target/product/${CODENAME}/SHRP*.zip release/
+      - run:
+          name: Upload Log
+          command: |
+            ls -a .
+            curl -F "file=@log.txt" https://file.io || true
+            curl -F "file=@log.txt" https://transfer.sh || true
+          working_directory: /tmp
+          when: always
       - run:
           name: Release all built files
           command: |
