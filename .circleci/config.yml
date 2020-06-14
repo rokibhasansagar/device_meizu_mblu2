@@ -2,9 +2,9 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: fr3akyphantom/droid-builder:latest
+      - image: fr3akyphantom/droid-builder:focal
     environment:
-      MANIFEST_BR: '9.0' # Optional: State SHRP Manifest Branch. i.e., '9.0' or other
+      MANIFEST_BR: 'android-9.0' # Optional: State SHRP Manifest Branch. i.e., '9.0' or other
       VENDOR: 'meizu' # State Product Vendor or Manufacturer
       CODENAME: 'mblu2' # Device Codename
       # GitHubMail: '' # Enter GitHub User EMail Address. Has been set in context.
@@ -13,7 +13,7 @@ jobs:
       # GITHUB_TOKEN: '' # GitHub OAuth Token, for release. Has been set in context.
       Device_Tree: 'https://github.com/rokibhasansagar/device_meizu_mblu2' # The Full URL of DT
       BUILDTYPE: 'userdebug' # Set as eng or userdebug
-      VER: '2.2'
+      VER: '2.3'
     working_directory: /home/builder/shrp/
     steps:
     # - checkout
@@ -33,7 +33,7 @@ jobs:
 
             if [[ -z ${MANIFEST_BR} ]]; then
               echo -e "\n Using Default Pie Manifest Branch."
-              MANIFEST_BR="9.0"
+              MANIFEST_BR="android-9.0"
             fi
 
             if [[ -z $GitHubName ]]; then
